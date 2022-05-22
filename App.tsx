@@ -1,49 +1,42 @@
-import React from 'react';
-import { View, Button } from 'react-native';
-import Svg, { Circle, Rect } from 'react-native-svg';
+import React, { useEffect } from 'react';
+import { StyleSheet, useWindowDimensions } from 'react-native';
+import Svg, { Circle, CircleProps } from 'react-native-svg';
 import Animated, {
   useSharedValue,
   withTiming,
-  useAnimatedStyle,
-  Easing,
+  withSpring,
+  useAnimatedProps,
 } from 'react-native-reanimated';
 
-export default function AnimatedStyleUpdateExample(props) {
-  const randomWidth = useSharedValue(10);
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
-  const a = '';
-  const config = {
-    duration: 500,
-    easing: Easing.bezier(0.5, 0.01, 0, 1),
-  };
+export default function App() {
+  const { width, height } = useWindowDimensions();
 
-  const style = useAnimatedStyle(() => {
+  const x = useSharedValue(0);
+  const y = useSharedValue(0);
+
+  useEffect(() => {
+    x.value = width / 2;
+    y.value = height / 2;
+  });
+
+  const circleProps = useAnimatedProps<CircleProps>(() => {
     return {
-      width: withTiming(randomWidth.value, config),
+      cx: withTiming(x.value),
+      cy: withSpring(y.value),
     };
   });
 
   return (
-    <>
-      <Svg height="50%" width="50%" viewBox="0 0 100 100" {...props}>
-        <Circle
-          cx="50"
-          cy="50"
-          r="45"
-          stroke="blue"
-          strokeWidth="2.5"
-          fill="green"
-        />
-        <Rect
-          x="15"
-          y="15"
-          width="70"
-          height="70"
-          stroke="red"
-          strokeWidth="2"
-          fill="yellow"
-        />
-      </Svg>
-    </>
+    <Svg style={[StyleSheet.absoluteFill, { backgroundColor: 'red' }]}>
+      <AnimatedCircle
+        animatedProps={circleProps}
+        r="30"
+        stroke="blue"
+        strokeWidth="1"
+        fill="green"
+      />
+    </Svg>
   );
 }
