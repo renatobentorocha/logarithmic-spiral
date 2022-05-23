@@ -5,13 +5,14 @@ import Animated, {
   useSharedValue,
   withTiming,
   useAnimatedProps,
+  runOnUI,
 } from 'react-native-reanimated';
 
 const AnimatedPolyline = Animated.createAnimatedComponent(Polyline);
 
 const POINT_SIZE = 5;
 const FULL_CIRCLE = 2 * Math.PI;
-const NUMBER_OF_CIRCLES = 20;
+const NUMBER_OF_CIRCLES = 12;
 
 // # In Cartesian coordinates
 //  ## The logarithmic spiral with the polar equation
@@ -36,34 +37,40 @@ export default function App() {
 
   const x = useSharedValue(0);
   const y = useSharedValue(0);
+  const animatedPoints = useSharedValue<Array<number>>([0, 0]);
   const incrementAngle = useSharedValue(0.1);
-
-  useEffect(() => {
-    x.value = width / 2 - POINT_SIZE / 2;
-    y.value = height / 2 - POINT_SIZE / 2;
-  });
 
   function draw() {
     'worklet';
     const a = 0.1;
     const b = 0.1;
     let angle = 0;
-    const points: Array<number> = [];
 
     while (angle <= NUMBER_OF_CIRCLES * FULL_CIRCLE) {
       const { x, y } = logarithmicSpiralPoint(a, b, angle);
 
-      points.push(...[x, y]);
+      animatedPoints.value = [...animatedPoints.value, x, y];
       angle = angle + incrementAngle.value;
     }
-
-    return points;
   }
 
+  function goToCenter() {
+    'worklet';
+    x.value = width / 2 - POINT_SIZE / 2;
+    y.value = height / 2 - POINT_SIZE / 2;
+  }
+
+  useEffect(() => {
+    runOnUI(() => {
+      'worklet';
+      goToCenter();
+      draw();
+    })();
+  }, []);
+
   const polylineProps = useAnimatedProps<PolylineProps>(() => {
-    const points = draw();
     return {
-      points: points,
+      points: animatedPoints.value,
       transform: [
         {
           translateX: withTiming(x.value),
