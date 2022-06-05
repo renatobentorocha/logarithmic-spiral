@@ -1,16 +1,13 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, useWindowDimensions } from 'react-native';
-import Svg, { Path, PathProps } from 'react-native-svg';
-import Animated, {
-  useSharedValue,
-  useAnimatedProps,
-} from 'react-native-reanimated';
-
-const AnimatedPath = Animated.createAnimatedComponent(Path);
+import Svg from 'react-native-svg';
+import { useSharedValue, runOnJS, runOnUI } from 'react-native-reanimated';
+import { Point } from './Point';
 
 const FULL_CIRCLE = 2 * Math.PI;
 const NUMBER_OF_CIRCLES = 12;
 
+// https://en.wikipedia.org/wiki/Logarithmic_spiral
 // # In Cartesian coordinates
 //  ## The logarithmic spiral with the polar equation
 //  r = ae^k÷ɸ
@@ -37,31 +34,40 @@ export default function App() {
     y: height / 2,
   };
 
-  const angle = useSharedValue(0);
-  const a = useSharedValue(0.1);
-  const k = useSharedValue(0.1);
-  const incrementAngle = useSharedValue(0.1);
-  const d = useSharedValue(`M ${center.x} ${center.y}`);
+  const [pointsDrawned, setPointsDrawed] = useState(false);
+  const points = useSharedValue<Array<number[]>>([[0, 0]]);
 
-  const animatedPathProps = useAnimatedProps<PathProps>(() => {
-    if (angle.value <= NUMBER_OF_CIRCLES * FULL_CIRCLE) {
-      const { x, y } = logarithmicSpiralPoint(a.value, k.value, angle.value);
-      d.value = `${d.value} L${center.x + x} ${center.y + y}`;
-      angle.value = angle.value + incrementAngle.value;
+  function init() {
+    'worklet';
+    let angle = 0.1;
+    const incrementAngle = 0.1;
+    const a = 0.1;
+    const k = 0.1;
+
+    while (angle <= NUMBER_OF_CIRCLES * FULL_CIRCLE) {
+      const { x, y } = logarithmicSpiralPoint(a, k, angle);
+
+      points.value = [...points.value, [x, y]];
+      angle = angle + incrementAngle;
     }
+    runOnJS(setPointsDrawed)(true);
+  }
 
-    return {
-      d: d.value,
-    };
+  useEffect(() => {
+    runOnUI(init)();
   });
 
   return (
     <Svg style={[StyleSheet.absoluteFill, { backgroundColor: '#ff000081' }]}>
-      <AnimatedPath
-        animatedProps={animatedPathProps}
-        strokeWidth={3}
-        stroke="red"
-      />
+      {pointsDrawned &&
+        points.value.map((p, index) => (
+          <Point
+            key={index.toString()}
+            center={{ x: center.x - 10, y: center.y - 10 }}
+            x={p[0]}
+            y={p[1]}
+          />
+        ))}
     </Svg>
   );
 }
